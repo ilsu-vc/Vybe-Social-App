@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io("http://192.168.56.1:4000");
+// USE YOUR ACTUAL BACKEND URL FROM IMAGE_C4C5AA.PNG
+const API_URL = "https://vybe-social-app.onrender.com";
+const socket = io(API_URL);
 
 function App() {
   const [user, setUser] = useState(localStorage.getItem('user'));
@@ -21,7 +23,7 @@ function App() {
     if (!creds.username || !creds.password) return alert("Fill all fields");
     
     try {
-      const { data } = await axios.post(`http://192.168.56.1:4000/api/${authMode}`, creds);
+      const { data } = await axios.post(`${API_URL}/api/${authMode}`, creds);
       if (authMode === 'login') {
         localStorage.setItem('user', data.username);
         setUser(data.username);
