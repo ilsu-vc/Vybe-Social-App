@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+/*import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -86,6 +86,98 @@ function App() {
             value={msg} onChange={e => setMsg(e.target.value)} placeholder="Message..." 
             onKeyPress={(e) => e.key === 'Enter' && send()}/>
           <button onClick={send} className="text-blue-500 font-bold px-2">Send</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App; */
+
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Get these from your Supabase Project Settings > API
+const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [msg, setMsg] = useState("");
+  const [chat, setChat] = useState([]);
+  const [creds, setCreds] = useState({ email: '', password: '' });
+
+  useEffect(() => {
+    // 1. Listen for new messages (The "Socket.io" replacement)
+    const channel = supabase.channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, 
+        payload => setChat(prev => [...prev, payload.new]))
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  const handleRegister = async () => {
+    const { error } = await supabase.auth.signUp(creds);
+    if (error) alert(error.message); else alert("Check email for verification!");
+  };
+
+  const handleLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithPassword(creds);
+    if (error) alert(error.message); else setUser(data.user);
+  };
+
+  const send = async () => {
+    await supabase.from('messages').insert([{ sender_name: user.email, content: msg }]);
+    setMsg("");
+  };
+
+  if (!user) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
+      <div className="bg-white p-10 border w-80 text-center shadow-xl">
+        <h1 className="text-3xl font-bold italic mb-6">Vybe</h1>
+        <div className="space-y-2">
+          <input className="w-full border p-2 text-xs" placeholder="Email" onChange={e => setCreds({...creds, email: e.target.value})} />
+          <input className="w-full border p-2 text-xs" type="password" placeholder="Password" onChange={e => setCreds({...creds, password: e.target.value})} />
+          <button onClick={handleLogin} className="w-full bg-blue-500 text-white py-1.5 rounded font-bold text-sm">Log In</button>
+          <button onClick={handleRegister} className="w-full border border-blue-500 text-blue-500 py-1.5 rounded text-sm mt-2">Sign Up</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* INSTAGRAM-STYLE FEED */}
+      <nav className="fixed top-0 w-full bg-white border-b h-16 flex items-center justify-around z-50">
+        <h1 className="text-2xl font-bold italic">Vybe</h1>
+        <button onClick={() => supabase.auth.signOut().then(() => setUser(null))} className="text-xs font-bold text-gray-400">LOGOUT</button>
+      </nav>
+
+      <main className="pt-24 flex justify-center px-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="bg-white border rounded-sm p-4 text-center text-sm text-gray-500">
+            Welcome to Vybe! Chat with friends using the floating bubble.
+          </div>
+        </div>
+      </main>
+
+      {/* FLOATING CHAT BUBBLE */}
+      <div className="fixed bottom-6 right-6">
+        <div className="w-80 h-96 bg-white shadow-2xl rounded-xl border flex flex-col overflow-hidden">
+          <div className="bg-white border-b p-3 font-bold text-sm">Vybe Direct</div>
+          <div className="flex-grow overflow-y-auto p-4 space-y-3 bg-gray-50 text-xs">
+            {chat.map((c, i) => (
+              <div key={i} className={`flex ${c.sender_name === user.email ? 'justify-end' : 'justify-start'}`}>
+                <div className={`px-3 py-1.5 rounded-2xl ${c.sender_name === user.email ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
+                  {c.content}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-3 border-t flex bg-white">
+            <input className="flex-grow text-xs outline-none bg-gray-100 rounded-full px-4 py-2" value={msg} onChange={e => setMsg(e.target.value)} placeholder="Message..." />
+            <button onClick={send} className="text-blue-500 font-bold text-xs ml-2">Send</button>
+          </div>
         </div>
       </div>
     </div>
