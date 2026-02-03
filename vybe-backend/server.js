@@ -11,11 +11,10 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 const pool = new Pool({
-  user: 'postgres',
-  host: '127.0.0.1', // Use loopback for local DB connection
-  database: 'vybe_db',
-  password: 'Lui$2115', 
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for Render's secure cloud connection
+  }
 });
 
 // Test Database Connection immediately on start
