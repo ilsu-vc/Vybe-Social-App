@@ -1,4 +1,4 @@
-const express = require('express');
+/*const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { Pool } = require('pg');
@@ -71,4 +71,48 @@ io.on('connection', (socket) => {
 // Using your IP for the listener
 server.listen(4000, "0.0.0.0", () => {
     console.log("🚀 Vybe Engine Live: http://192.168.56.1:4000");
+}); */
+
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
+
+const app = express();
+const server = http.createServer(app);
+
+// --- FIXED CORS CONFIG ---
+// This allows your specific frontend to talk to this backend
+app.use(cors({
+    origin: ["https://vybe-social-app-1.onrender.com"], // Your actual frontend URL
+    methods: ["GET", "POST"],
+    credentials: true
+}));
+
+const io = new Server(server, { 
+    cors: { 
+        origin: "https://vybe-social-app-1.onrender.com",
+        methods: ["GET", "POST"]
+    } 
 });
+
+// --- CLOUD DATABASE CONFIG ---
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+app.use(express.json());
+
+// ... (Keep your existing /api/register and /api/login routes here)
+
+io.on('connection', (socket) => {
+    socket.on('send_msg', (data) => io.emit('receive_msg', data));
+});
+
+// Use process.env.PORT for Render deployment
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => console.log(`🚀 Engine live on port ${PORT}`));
