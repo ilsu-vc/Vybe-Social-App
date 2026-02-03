@@ -72,22 +72,20 @@ io.on('connection', (socket) => {
 server.listen(4000, "0.0.0.0", () => {
     console.log("🚀 Vybe Engine Live: http://192.168.56.1:4000");
 }); */
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
 
-// --- FIXED CORS CONFIG ---
-// This allows your specific frontend to talk to this backend
+// --- HARDENED CORS CONFIG ---
+// Replace the URL inside the array with your ACTUAL Frontend URL from Render
 app.use(cors({
-    origin: ["https://vybe-social-app-1.onrender.com"], // Your actual frontend URL
+    origin: ["https://vybe-social-app-1.onrender.com"], 
     methods: ["GET", "POST"],
     credentials: true
 }));
@@ -99,7 +97,6 @@ const io = new Server(server, {
     } 
 });
 
-// --- CLOUD DATABASE CONFIG ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -107,12 +104,28 @@ const pool = new Pool({
 
 app.use(express.json());
 
-// ... (Keep your existing /api/register and /api/login routes here)
+// API Routes
+app.post('/api/register', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const hash = await bcrypt.hash(password, 10);
+        await pool.query("INSERT INTO users (username, password_hash) VALUES ($1, $2)", [username, hash]);
+        res.status(201).json({ username });
+    } catch (err) { res.status(400).json({ error: "User exists" }); }
+});
+
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    const user = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    if (user.rows[0] && await bcrypt.compare(password, user.rows[0].password_hash)) {
+        res.json({ username });
+    } else { res.status(401).json({ error: "Wrong credentials" }); }
+});
 
 io.on('connection', (socket) => {
     socket.on('send_msg', (data) => io.emit('receive_msg', data));
 });
 
-// Use process.env.PORT for Render deployment
+// Render dynamic port
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`🚀 Engine live on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`🚀 Sync live on port ${PORT}`));
